@@ -10,8 +10,16 @@ import kotlin.math.abs
 
 /**
  * 编辑模式专用 EditText：
- * 1. fling 惯性滚动速度放大，快速划一下能滚很远（与阅读模式 ScrollView 手感一致）
- * 2. 提供按比例快速滚动接口，供右侧快速滚动条 / 跳转按钮使用
+ *
+ * 原因：普通 EditText 的触摸滚动是为"光标定位/文本选择"服务的，
+ * 系统内部会优先消费触摸事件去处理光标和选区，导致 fling（快速划一下）
+ * 惯性很弱，划一下几乎滚不动，跟阅读模式的 ScrollView 手感差很多。
+ *
+ * 解决办法：
+ * 1. 先把触摸事件交给系统 EditText 处理（保证光标/选择功能不受影响）；
+ * 2. 手指抬起时，自己用 VelocityTracker 拿到抬手速度，放大后
+ *    用 OverScroller 接管后续滚动动画，实现"划一下能滚很远"，
+ *    效果与阅读模式 ScrollView 的惯性滚动手感一致。
  */
 class FastEditText @JvmOverloads constructor(
     context: Context,
