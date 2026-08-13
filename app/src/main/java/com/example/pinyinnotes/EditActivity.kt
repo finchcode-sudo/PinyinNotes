@@ -35,7 +35,7 @@ import java.util.regex.Pattern
 class EditActivity : AppCompatActivity() {
 
     private lateinit var noteUri: Uri
-    private lateinit var editText: EditText
+    private lateinit var editText: FastEditText   // ← 唯一改动：EditText → FastEditText
     private lateinit var btnToggleMode: ImageButton
     private lateinit var btnChooseApp: ImageButton
     private lateinit var scrollReadView: ScrollView
