@@ -46,7 +46,11 @@ class FastEditText @JvmOverloads constructor(
     fun smoothScrollToFraction(fraction: Float) {
         val range = scrollRange()
         if (range <= 0) return
-        smoothScrollTo(0, (range * fraction.coerceIn(0f, 1f)).toInt())
+        val targetY = (range * fraction.coerceIn(0f, 1f)).toInt()
+        customScroller.forceFinished(true)
+        customScroller.startScroll(0, scrollY, 0, targetY - scrollY, 300)
+        customFlingActive = true
+        postInvalidateOnAnimation()
     }
 
     /** 直接跳到底部 */
