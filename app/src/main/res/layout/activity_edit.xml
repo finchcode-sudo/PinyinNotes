@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- 编辑模式：原始文本输入框 -->
-    <EditText
+    <!-- 编辑模式：原始文本输入框（增强滚动：惯性更快） -->
+    <com.example.pinyinnotes.FastEditText
         android:id="@+id/editContent"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
