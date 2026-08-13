@@ -103,7 +103,7 @@ class FastEditText @JvmOverloads constructor(
                 lastTouchY = event.y
                 // 可选：放大跟手距离（默认 1.0 不启用，避免干扰光标/选择）
                 if (scrollMultiplier > 1f && canScrollVertically(1)) {
-                    scrollBy(0, (dy * (scrollMultiplier - 1f)).toInt())
+                    scrollBy(0, (-dy * (scrollMultiplier - 1f)).toInt())
                 }
             }
 
@@ -122,7 +122,7 @@ class FastEditText @JvmOverloads constructor(
                 if (range > 0 && abs(vy) > 300f && !customFlingActive) {
                     customScroller.fling(
                         0, scrollY,
-                        0, (vy * flingMultiplier).toInt(),
+                        0, (-vy * flingMultiplier).toInt(),
                         0, 0,
                         0, range,
                         0, 0
