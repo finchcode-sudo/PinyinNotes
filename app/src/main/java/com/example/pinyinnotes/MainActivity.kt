@@ -90,27 +90,6 @@ class MainActivity : AppCompatActivity() {
         val btnCheckDuplicate: android.widget.Button = findViewById(R.id.btnCheckDuplicate)
         btnCheckDuplicate.setOnClickListener { checkDuplicates() }
 
-        // ✅ 跟二级页面（CategoryActivity）同款秒开逻辑：
-        // 内存缓存有就直接用（同进程内重复回主页），没有就读一次磁盘快照先占位，
-        // 真实数据仍由下面 onReady 里的 refreshList() 在后台刷新后无感替换
-        val memCategoryCache = CategoriesCache.get()
-        if (memCategoryCache != null) {
-            categories = memCategoryCache.toMutableList()
-            adapter.submitEntries(categories)
-        } else {
-            Thread {
-                val diskCategories = CategoriesCache.loadDisk(this)
-                if (diskCategories != null) {
-                    runOnUiThread {
-                        if (CategoriesCache.get() == null) {
-                            categories = diskCategories.toMutableList()
-                            adapter.submitEntries(categories)
-                        }
-                    }
-                }
-            }.start()
-        }
-
         // 启动时读取上次保存的文件夹：优先用本机免密缓存直接解锁，
         // 没有缓存（比如刚装完 App 第一次配合旧文件夹，或缓存被清）才弹密码框
         val savedUri = prefs.getString("tree_uri", null)
@@ -477,8 +456,6 @@ class MainActivity : AppCompatActivity() {
         val repo = categoryRepository ?: return
         Thread {
             val list = repo.getAllCategories()
-            CategoriesCache.put(list)
-            CategoriesCache.saveDisk(this, list)
             runOnUiThread {
                 categories = list.toMutableList()
                 adapter.submitEntries(categories)
