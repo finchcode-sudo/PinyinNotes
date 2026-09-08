@@ -51,10 +51,26 @@ class CategoryActivity : AppCompatActivity() {
                 adapter.getPositionForLetter(letter)
             }
 
-            // 有缓存就先秒开显示，后台再刷新真实数据 + 字数
-            NotesCache.get(categoryUri)?.let {
-                notes = it.toMutableList()
+            // 有内存缓存（同进程内重复进入）就先秒开显示，后台再刷新真实数据 + 字数
+            val memCache = NotesCache.get(categoryUri)
+            if (memCache != null) {
+                notes = memCache.toMutableList()
                 adapter.submitEntries(notes)
+            } else {
+                // 内存缓存是空的（进程刚被拉起，比如被系统杀后台又重开）：
+                // 尝试用磁盘缓存先秒开占位，真实数据仍然由下面的 refreshList() 在后台刷新替换
+                Thread {
+                    val diskNotes = NotesCache.loadDisk(this, categoryUri)
+                    if (diskNotes != null) {
+                        runOnUiThread {
+                            // 如果这时候真实数据已经刷新完了（memCache 期间被填充），不要用旧的磁盘快照覆盖它
+                            if (NotesCache.get(categoryUri) == null) {
+                                notes = diskNotes.toMutableList()
+                                adapter.submitEntries(notes)
+                            }
+                        }
+                    }
+                }.start()
             }
 
             val fab: ImageButton = findViewById(R.id.fab)
@@ -84,6 +100,7 @@ class CategoryActivity : AppCompatActivity() {
         Thread {
             val list = repo.getAllNotes()
             NotesCache.put(categoryUri, list)
+            NotesCache.saveDisk(this, categoryUri, list)
 
             val diskCache = WordCountCache.load(this, categoryUri)
             val counts = mutableMapOf<Uri, Int>()
