@@ -77,26 +77,47 @@ class CategoryActivity : AppCompatActivity() {
         refreshList()
     }
 
-    // ✅ 后台批量计算字数，只做一次 I/O
+    // ✅ 后台计算字数：只对"磁盘缓存里没有，或 lastModified 变了"的笔记重新解密，
+    // 其余笔记直接复用磁盘缓存的字数，避免笔记一多每次 onResume 都要整份重新解密。
     private fun refreshList() {
         val repo = repository ?: return
         Thread {
             val list = repo.getAllNotes()
             NotesCache.put(categoryUri, list)
 
+            val diskCache = WordCountCache.load(this, categoryUri)
             val counts = mutableMapOf<Uri, Int>()
+            val newDiskCache = mutableMapOf<String, WordCountCache.Entry>()
+            var keyNotReady = false
+
             for (note in list) {
-                counts[note.uri] = try {
-                    val content = DocStore.getContent(this, note.uri)
-                    content.replace(Regex("\\s+"), "").length
-                } catch (e: IllegalStateException) {
-                    // 密钥未就绪
-                    runOnUiThread {
-                        Toast.makeText(this, "密钥未就绪，请返回重新解锁", Toast.LENGTH_SHORT).show()
+                val uriStr = note.uri.toString()
+                val cached = diskCache[uriStr]
+                val count = if (cached != null && cached.lastModified == note.lastModified) {
+                    // 命中缓存：这条笔记自上次算过字数后没有被修改过，跳过解密
+                    cached.count
+                } else {
+                    try {
+                        val content = DocStore.getContent(this, note.uri)
+                        content.replace(Regex("\\s+"), "").length
+                    } catch (e: IllegalStateException) {
+                        // 密钥未就绪
+                        keyNotReady = true
+                        0
+                    } catch (e: Exception) {
+                        0
                     }
-                    0
-                } catch (e: Exception) {
-                    0
+                }
+                counts[note.uri] = count
+                newDiskCache[uriStr] = WordCountCache.Entry(note.lastModified, count)
+            }
+
+            // 整份覆盖写：已删除的笔记不会残留在缓存文件里
+            WordCountCache.save(this, categoryUri, newDiskCache)
+
+            if (keyNotReady) {
+                runOnUiThread {
+                    Toast.makeText(this, "密钥未就绪，请返回重新解锁", Toast.LENGTH_SHORT).show()
                 }
             }
 
